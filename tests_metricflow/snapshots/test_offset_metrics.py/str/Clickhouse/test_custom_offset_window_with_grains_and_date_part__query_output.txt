@@ -1,0 +1,6 @@
+test_name: test_custom_offset_window_with_grains_and_date_part
+test_filename: test_offset_metrics.py
+---
+metric_time__alien_day    booking__ds__month    metric_time__extract_year      bookings_offset_one_alien_day
+------------------------  --------------------  ---------------------------  -------------------------------
+                                                                                                         287

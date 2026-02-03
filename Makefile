@@ -87,11 +87,23 @@ populate-persistent-source-schema-snowflake:
 test-trino:
 	hatch -v run trino-env:pytest -vv -n $(PARALLELISM) $(ADDITIONAL_PYTEST_OPTIONS) $(TESTS_METRICFLOW)/
 
+.PHONY: test-clickhouse
+test-clickhouse:
+	hatch -v run clickhouse-env:pytest -vv -n $(PARALLELISM) $(ADDITIONAL_PYTEST_OPTIONS) $(TESTS_METRICFLOW)/
+
+.PHONY: populate-persistent-source-schema-clickhouse
+populate-persistent-source-schema-clickhouse:
+	hatch -v run clickhouse-env:pytest -vv $(ADDITIONAL_PYTEST_OPTIONS) $(USE_PERSISTENT_SOURCE_SCHEMA) $(POPULATE_PERSISTENT_SOURCE_SCHEMA)
+
 .PHONY: lint
 lint:
 	hatch -v run dev-env:pre-commit run --verbose --all-files $(ADDITIONAL_PRECOMMIT_OPTIONS)
 
 # Running data warehouses locally
+.PHONY: clickhouse
+clickhouse:
+	make -C local-data-warehouses clickhouse
+
 .PHONY: postgresql postgres
 postgresql postgres:
 	make -C local-data-warehouses postgresql

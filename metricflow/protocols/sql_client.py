@@ -19,6 +19,7 @@ class SqlEngine(Enum):
     """
 
     BIGQUERY = "BigQuery"
+    CLICKHOUSE = "Clickhouse"
     DUCKDB = "DuckDB"
     REDSHIFT = "Redshift"
     POSTGRES = "Postgres"
@@ -39,6 +40,8 @@ class SqlEngine(Enum):
             return set()
         elif self is SqlEngine.BIGQUERY:
             return {TimeGranularity.NANOSECOND}
+        elif self is SqlEngine.CLICKHOUSE:
+            return {TimeGranularity.NANOSECOND, TimeGranularity.MICROSECOND}
         elif self is SqlEngine.DATABRICKS:
             return {TimeGranularity.NANOSECOND}
         elif self is SqlEngine.DUCKDB:

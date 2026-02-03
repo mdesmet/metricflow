@@ -42,12 +42,24 @@ class AdapterBackedDDLSqlClient(AdapterBackedSqlClient):
         with self._adapter.connection_named("MetricFlow_create_from_dataframe"):
             # Create table
             columns_to_insert = []
+            first_column_name = None
             for column_description in df.column_descriptions:
                 # Format as "column_name column_type"
                 columns_to_insert.append(f"{column_description.column_name} {self._get_sql_type(column_description)}")
+                if first_column_name is None:
+                    first_column_name = column_description.column_name
+
+            create_table_statement = f"CREATE TABLE IF NOT EXISTS {sql_table.sql} ({', '.join(columns_to_insert)})"
+
+            # ClickHouse requires every table to have a storage engine
+            if self.sql_engine_type is SqlEngine.CLICKHOUSE and first_column_name is not None:
+                create_table_statement = (
+                    f"{create_table_statement} ENGINE = MergeTree ORDER BY ({first_column_name}) "
+                    f"SETTINGS allow_nullable_key = 1"
+                )
 
             self._adapter.execute(
-                f"CREATE TABLE IF NOT EXISTS {sql_table.sql} ({', '.join(columns_to_insert)})",
+                create_table_statement,
                 auto_begin=True,
                 fetch=False,
             )
@@ -106,10 +118,16 @@ class AdapterBackedDDLSqlClient(AdapterBackedSqlClient):
                 return "string"
             if self.sql_engine_type is SqlEngine.TRINO:
                 return "varchar"
+            if self.sql_engine_type is SqlEngine.CLICKHOUSE:
+                return "Nullable(String)"
             return "text"
         elif column_type is bool:
+            if self.sql_engine_type is SqlEngine.CLICKHOUSE:
+                return "Nullable(Bool)"
             return "boolean"
         elif column_type is int:
+            if self.sql_engine_type is SqlEngine.CLICKHOUSE:
+                return "Nullable(Int64)"
             return "bigint"
         elif column_type is float:
             return self._sql_plan_renderer.expr_renderer.double_data_type
@@ -132,8 +150,16 @@ class AdapterBackedDDLSqlClient(AdapterBackedSqlClient):
 
     def create_schema(self, schema_name: str) -> None:
         """Create the given schema in a data warehouse. Only used in tutorials and tests."""
-        self.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
+        # ClickHouse has no schema concept, only databases
+        if self.sql_engine_type is SqlEngine.CLICKHOUSE:
+            self.execute(f"CREATE DATABASE IF NOT EXISTS {schema_name}")
+        else:
+            self.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
     def drop_schema(self, schema_name: str, cascade: bool = True) -> None:
         """Drop the given schema from the data warehouse. Only used in tests."""
-        self.execute(f"DROP SCHEMA IF EXISTS {schema_name}{' CASCADE' if cascade else ''}")
+        # ClickHouse has no schema concept, only databases
+        if self.sql_engine_type is SqlEngine.CLICKHOUSE:
+            self.execute(f"DROP DATABASE IF EXISTS {schema_name}")
+        else:
+            self.execute(f"DROP SCHEMA IF EXISTS {schema_name}{' CASCADE' if cascade else ''}")

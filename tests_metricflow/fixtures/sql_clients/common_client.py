@@ -7,6 +7,7 @@ from typing import Optional, TypeVar
 class SqlDialect(Enum):
     """All SQL dialects that MQL currently supports. Value of enum is used in URLs as the dialect."""
 
+    CLICKHOUSE = "clickhouse"
     DUCKDB = "duckdb"
     REDSHIFT = "redshift"
     POSTGRESQL = "postgresql"

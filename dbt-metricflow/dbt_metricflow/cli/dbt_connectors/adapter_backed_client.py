@@ -15,6 +15,7 @@ from metricflow_semantics.toolkit.mf_logging.lazy_formattable import LazyFormat
 from metricflow.data_table.mf_table import MetricFlowDataTable
 from metricflow.protocols.sql_client import SqlEngine
 from metricflow.sql.render.big_query import BigQuerySqlPlanRenderer
+from metricflow.sql.render.clickhouse import ClickhouseSqlQueryPlanRenderer
 from metricflow.sql.render.databricks import DatabricksSqlPlanRenderer
 from metricflow.sql.render.duckdb_renderer import DuckDbSqlPlanRenderer
 from metricflow.sql.render.postgres import PostgresSQLSqlPlanRenderer
@@ -35,6 +36,7 @@ DATABRICKS_CLUSTER_EXPLAIN_PLAN_ERROR_KEY = "org.apache.spark.sql.AnalysisExcept
 class SupportedAdapterTypes(enum.Enum):
     """Enumeration of supported dbt adapter types."""
 
+    CLICKHOUSE = "clickhouse"
     DATABRICKS = "databricks"
     POSTGRES = "postgres"
     SNOWFLAKE = "snowflake"
@@ -48,6 +50,8 @@ class SupportedAdapterTypes(enum.Enum):
         """Return the SqlEngine corresponding to the supported adapter type."""
         if self is SupportedAdapterTypes.BIGQUERY:
             return SqlEngine.BIGQUERY
+        elif self is SupportedAdapterTypes.CLICKHOUSE:
+            return SqlEngine.CLICKHOUSE
         elif self is SupportedAdapterTypes.DATABRICKS:
             return SqlEngine.DATABRICKS
         elif self is SupportedAdapterTypes.POSTGRES:
@@ -68,6 +72,8 @@ class SupportedAdapterTypes(enum.Enum):
         """Return the SqlPlanRenderer corresponding to the supported adapter type."""
         if self is SupportedAdapterTypes.BIGQUERY:
             return BigQuerySqlPlanRenderer()
+        elif self is SupportedAdapterTypes.CLICKHOUSE:
+            return ClickhouseSqlQueryPlanRenderer()
         elif self is SupportedAdapterTypes.DATABRICKS:
             return DatabricksSqlPlanRenderer()
         elif self is SupportedAdapterTypes.POSTGRES:
@@ -231,6 +237,13 @@ class AdapterBackedSqlClient:
         elif self.sql_engine_type is SqlEngine.BIGQUERY:
             with self._adapter.connection_named(connection_name):
                 self._adapter.validate_sql(stmt)
+        elif self.sql_engine_type is SqlEngine.CLICKHOUSE:
+            # ClickHouse only supports EXPLAIN for SELECT queries.
+            # For non-SELECT queries, we skip the dry run validation.
+            stmt_upper = stmt.strip().upper()
+            if stmt_upper.startswith("SELECT") or stmt_upper.startswith("WITH"):
+                with self._adapter.connection_named(connection_name):
+                    self._adapter.execute(f"EXPLAIN {stmt}", auto_begin=True, fetch=False)
         else:
             is_databricks = self.sql_engine_type is SqlEngine.DATABRICKS
             with self._adapter.connection_named(connection_name):

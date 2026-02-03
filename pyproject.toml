@@ -154,6 +154,16 @@ template = "dev-env"
 extra-dependencies = ["trino>=0.328.0, <0.329.0", "dbt-trino>=1.8.0, <1.9.0"]
 
 
+[tool.hatch.envs.clickhouse-env.env-vars]
+PYTHONPATH="metricflow-semantics:dbt-metricflow"
+MF_TEST_ADAPTER_TYPE = "clickhouse"
+
+[tool.hatch.envs.clickhouse-env]
+description = "Dev environment for working with the ClickHouse adapter"
+template = "dev-env"
+extra-dependencies = ["dbt-clickhouse>=1.8.0, <1.10.0"]
+
+
 [tool.black]
 line-length = 120
 
